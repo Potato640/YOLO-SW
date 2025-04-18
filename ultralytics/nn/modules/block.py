@@ -245,7 +245,7 @@ class EC2f(nn.Module):
 from ultralytics.nn.modules.transformer_choice import Tc
 
 
-class C2ftc(nn.Module):
+class MFAFA(nn.Module):
     """Faster Implementation of CSP Bottleneck with 2 convolutions."""
 
     def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5):
@@ -253,18 +253,14 @@ class C2ftc(nn.Module):
         expansion.
         """
         super().__init__()
-        # self.c = int(c2 * e)  # hidden channels
+
         self.cv1 = Conv(c1, c2, 1, 1)
-        # self.cv2 = Conv((2 + n) * self.c, c2, 1)  # optional act=FReLU(c2)
-        # self.m = nn.ModuleList(Bottleneck(self.c, self.c, shortcut, g, k=((3, 3), (3, 3)), e=1.0) for _ in range(n))
+
         self.tc = Tc(c2)
-        # self.tc = TransformerBlock(c2, c2, 4, n)
+
 
     def forward(self, x):
         """Forward pass through C2f layer."""
-        # y = list(self.cv1(x).chunk(2, 1))
-        # y.extend(m(y[-1]) for m in self.m)
-        # y = self.tc(self.cv2(torch.cat(y, 1)))
         x = self.cv1(x)
         return self.tc(x)
 
@@ -943,58 +939,7 @@ class C2fLCB(EC2f):
         self.m = nn.ModuleList(LCB(self.c, self.c, shortcut, e=1.0, lk=lk) for _ in range(n))
 
 
-# class Attention(nn.Module):
-#     def __init__(self, dim, num_heads=8,
-#                  attn_ratio=0.5):
-#         super().__init__()
-#         self.num_heads = num_heads
-#         self.head_dim = dim // num_heads
-#         self.key_dim = int(self.head_dim * attn_ratio)
-#         self.scale = self.key_dim ** -0.5
-#         nh_kd = nh_kd = self.key_dim * num_heads
-#         h = dim + nh_kd * 2
-#         self.qkv = Conv(dim, h, 1, act=False)
-#         self.proj = Conv(dim, dim, 1, act=False)
-#         self.pe = Conv(dim, dim, 3, 1, g=dim, act=False)
-#         self.max = nn.MaxPool2d(kernel_size=2, stride=2)
-#         self.avg = nn.AvgPool2d(kernel_size=2, stride=2)
-#         self.R1 = nn.Upsample(None, 2, 'nearest')
-#
-#     def forward(self, x):
-#         B, _, H, W = x.shape
-#         N = H * W
-#         qkv = self.qkv(x)
-#         q, k, v = qkv.view(B, self.num_heads, -1, N).split([self.key_dim, self.key_dim, self.head_dim], dim=2)
-#
-#         attn = (
-#             (q.transpose(-2, -1) @ k) * self.scale
-#         )
-#         attn = attn.softmax(dim=-1)
-#
-#         x = (v @ attn.transpose(-2, -1)).view(B, -1, H, W) + self.pe(v.reshape(B, -1, H, W))
-#
-#
-#         max = self.max(x)
-#         avg = self.avg(x)
-#
-#         avg_max = self.R1(max) + self.R1(avg)
-#
-#         # _, N, _, _ = x.shape
-#         # choice = x.mean([0, -2, -1])
-#         # choice = self.sigmoid(choice)
-#         # choice = (choice.sum() / N)
-#         #
-#         # x = x * tmp
-#         #
-#         # if choice < 0.4994:
-#         #     x = self.diconv_3(x)
-#         # elif choice > 4997:
-#         #     x = self.diconv_1(x)
-#         # else:
-#         #     x = self.diconv_2(x)
-#
-#         x = self.proj(avg_max)
-#         return x
+
 
 class Attention(nn.Module):
     def __init__(self, dim, num_heads=8,

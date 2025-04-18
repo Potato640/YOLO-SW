@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-class MFAFA(nn.Module):
+class Tc(nn.Module):
     def __init__(self, dim, qkv_bias=False):
         super().__init__()
 

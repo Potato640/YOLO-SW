@@ -7,10 +7,9 @@ class Block(nn.Module):
         super().__init__()
         self.mode = mode
         self.norm = nn.LayerNorm(dim)
-        # self.dwconv = nn.Conv2d(dim, dim, kernel_size=7, padding=3, groups=dim)  # depthwise conv 71.7
-        self.diconv = nn.Conv2d(dim, dim, kernel_size=3, padding=2, dilation=2)  # dilation conv 72.6 our
-        # self.diconv = nn.Conv2d(dim, dim, kernel_size=3, padding=3, dilation=3)  # dilation conv 72.4
-        # self.diconv = nn.Conv2d(dim, dim, kernel_size=3, padding=5, dilation=5)  # dilation conv 71.2  640-500nwp88.5
+
+        self.diconv = nn.Conv2d(dim, dim, kernel_size=3, padding=2, dilation=2)  
+
         self.f = nn.Linear(dim, 6 * dim)
         self.act = nn.GELU()
         self.g = nn.Linear(3 * dim, dim)
@@ -23,7 +22,7 @@ class Block(nn.Module):
         x = x.permute(0, 2, 3, 1)
         input = x
         x = self.norm(x)
-        # x = self.dwconv(x.permute(0, 3, 1, 2)).permute(0, 2, 3, 1)
+
         x = self.diconv(x.permute(0, 3, 1, 2)).permute(0, 2, 3, 1)
         x = self.f(x)
         B, H, W, C = x.size()
