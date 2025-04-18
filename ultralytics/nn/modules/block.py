@@ -18,7 +18,7 @@ __all__ = (
     "C1",
     "C2",
     "C3",
-    "C2f",
+    "EC2f",
     "C2fAttn",
     "ImagePoolingAttn",
     "ContrastiveHead",
@@ -212,10 +212,10 @@ class C2(nn.Module):
         a, b = self.cv1(x).chunk(2, 1)
         return self.cv2(torch.cat((self.m(a), b), 1))
 
-from ultralytics.nn.modules.demoblock import Block
+from ultralytics.nn.modules.MMA import Block
 from ultralytics.nn.modules.atttention.COT import CoTAttention
 
-class C2f(nn.Module):
+class EC2f(nn.Module):
     """Faster Implementation of CSP Bottleneck with 2 convolutions."""
 
     def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5):
@@ -863,41 +863,6 @@ class SE(nn.Module):
         y = self.fc(y).view(b, c, 1, 1) #对应Excitation操作
         return x + (x * y.expand_as(x))
 
-# class CIB(nn.Module):
-#     """Standard bottleneck. new CIB"""
-#
-#     def __init__(self, c1, c2, shortcut=True, e=0.5, lk=False):
-#         """Initializes a bottleneck module with given input/output channels, shortcut option, group, kernels, and
-#         expansion.
-#         """
-#         super().__init__()
-#         c_ = int(c2 * e)  # hidden channels
-#         self.cv1 = nn.Sequential(
-#
-#             Conv(c1, c1, 3, g=c1),
-#             # nn.BatchNorm2d(c1), #66.8
-#             # nn.ReLU(),
-#             Conv(c1, 2 * c_, 1),
-#
-#             # nn.BatchNorm2d(2 * c_), #70.8
-#             # nn.ReLU(),
-#             # Conv(2 * c_, 2 * c_, 3, g=2 * c_) if not lk else RepVGGDW(2 * c_),
-#             Conv(2 * c_, 2 * c_, 3, g=2 * c_) if not lk else RepVGGDW(2 * c_),
-#             # SE(channel=2 * c_, reduction=1), # only-SE 67.2
-#             # SE(channel=2 * c_, reduction=1), # +SE 71.2
-#             # nn.BatchNorm2d(2 * c_), #72.7
-#             # nn.ReLU(),
-#             Conv(2 * c_, c2, 1),
-#             # nn.BatchNorm2d(c2), #72.3
-#             # nn.ReLU(),
-#             Conv(c2, c2, 3, g=c2),
-#         )
-#
-#         self.add = shortcut and c1 == c2
-#
-#     def forward(self, x):
-#         """'forward()' applies the YOLO FPN to input data."""
-#         return x + self.cv1(x) if self.add else self.cv1(x)
 
 class NSE(nn.Module):
     def __init__(self, channel, reduction=16):
@@ -925,10 +890,9 @@ class LSBlock(nn.Module):
         super().__init__()
         self.fc1 = nn.Conv2d(in_features, hidden_features, kernel_size=3, padding=3 // 2, groups=hidden_features)
         self.norm = nn.BatchNorm2d(hidden_features)
-        # self.fc2 = nn.Conv2d(hidden_features, hidden_features, kernel_size=1, padding=0) #71.2
-        self.se = SE(channel=hidden_features, reduction=1) #res-se 75.7
 
-        # self.se = NSE(channel=hidden_features, reduction=1) #
+        self.se = SE(channel=hidden_features, reduction=1) 
+
         self.fc2 = nn.Conv2d(hidden_features, hidden_features, kernel_size=3, padding=2, dilation=2) #75.2
         self.act = act_layer()
         self.fc3 = nn.Conv2d(hidden_features, in_features, kernel_size=1, padding=0)
@@ -949,7 +913,7 @@ class LSBlock(nn.Module):
 
 
 
-class CIB(nn.Module):
+class LCB(nn.Module):
     """Standard bottleneck. new CIB"""
 
     def __init__(self, c1, c2, shortcut=True, e=0.5, lk=False):
@@ -968,7 +932,7 @@ class CIB(nn.Module):
         return x + self.cv1(x) if self.add else self.cv1(x)
 
 
-class C2fCIB(C2f):
+class C2fLCB(EC2f):
     """Faster Implementation of CSP Bottleneck with 2 convolutions."""
 
     def __init__(self, c1, c2, n=1, shortcut=False, lk=False, g=1, e=0.5):
@@ -976,7 +940,7 @@ class C2fCIB(C2f):
         expansion.
         """
         super().__init__(c1, c2, n, shortcut, g, e)
-        self.m = nn.ModuleList(CIB(self.c, self.c, shortcut, e=1.0, lk=lk) for _ in range(n))
+        self.m = nn.ModuleList(LCB(self.c, self.c, shortcut, e=1.0, lk=lk) for _ in range(n))
 
 
 # class Attention(nn.Module):
